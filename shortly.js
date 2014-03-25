@@ -15,7 +15,7 @@ app.configure(function() {
   app.set('views', __dirname + '/views');
   app.set('view engine', 'ejs');
   app.use(partials());
-  app.use(express.bodyParser())
+  app.use(express.bodyParser());
   app.use(express.static(__dirname + '/public'));
 });
 
@@ -30,7 +30,7 @@ app.get('/create', function(req, res) {
 app.get('/links', function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
-  })
+  });
 });
 
 app.post('/links', function(req, res) {
@@ -41,9 +41,9 @@ app.post('/links', function(req, res) {
     return res.send(404);
   }
 
-  new Link({ url: uri }).fetch().then(function(found) {
-    if (found) {
-      res.send(200, found.attributes);
+  new Link({ url: uri }).fetch().then(function(model) {
+    if (model) {
+      res.send(200, model.attributes);
     } else {
       util.getUrlTitle(uri, function(err, title) {
         if (err) {
@@ -75,7 +75,18 @@ app.get('/login', function(req, res) {
 });
 
 app.post('/login', function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
 
+  new User({ username: username }).fetch().then(function(model) {
+    if (model) {
+      console.log(util.bComparinator(password, model.get('password')));
+    } else {
+      console.log('User doesn\'t exist');
+    }
+  });
+
+  console.log(username, password);
 });
 
 app.get('/signup', function(req, res) {
