@@ -17,20 +17,35 @@ app.configure(function() {
   app.use(partials());
   app.use(express.bodyParser());
   app.use(express.static(__dirname + '/public'));
+  app.use(express.cookieParser());
+  app.use(express.session({ cookie: { maxAge: 3600000 }, secret: 'secret' }));
 });
 
 app.get('/', function(req, res) {
-  res.render('index');
+  console.log(req.session.user);
+  if (req.session.user) {
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/create', function(req, res) {
-  res.render('index');
+  if (req.session.user) {
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/links', function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  });
+  if (req.session.user) {
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.post('/links', function(req, res) {
@@ -71,7 +86,12 @@ app.post('/links', function(req, res) {
 /************************************************************/
 
 app.get('/login', function(req, res) {
-  res.render('login');
+  console.log('ya:', req.session, req.cookies);
+  if (req.session.user) {
+    res.redirect('/');
+  } else {
+    res.render('login');
+  }
 });
 
 app.post('/login', function(req, res) {
@@ -80,13 +100,15 @@ app.post('/login', function(req, res) {
 
   new User({ username: username }).fetch().then(function(model) {
     if (model) {
-      console.log(util.bComparinator(password, model.get('password')));
+      if (util.bComparinator(password, model.get('password'))) {
+        req.session.user = username;
+        console.log(req.session.user);
+      }
+      res.redirect('/');
     } else {
-      console.log('User doesn\'t exist');
+      res.redirect('/login');
     }
   });
-
-  console.log(username, password);
 });
 
 app.get('/signup', function(req, res) {
@@ -94,7 +116,24 @@ app.get('/signup', function(req, res) {
 });
 
 app.post('/signup', function(req, res) {
+  new User({ username: req.body.username }).fetch().then(function(user) {
+    if (user) {
+      res.redirect('/signup');
+    } else {
+      new User({
+        username: req.body.username,
+        password: util.bCryptor(req.body.password)
+      }).save().then(function(newUser) {
+        req.session.user = newUser.get('username');
+        res.redirect('/');
+      });
+    }
+  });
+});
 
+app.get('/logout', function(req, res) {
+  req.session.destroy();
+  res.redirect('/login');
 });
 
 
